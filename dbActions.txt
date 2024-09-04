@@ -1,0 +1,293 @@
+--Creating Tables and creating relationships
+CREATE TABLE "Buyer" (
+    "Id" UUID PRIMARY KEY,
+    "Name" VARCHAR(255) NOT NULL,
+    "DOB" TIMESTAMP NOT NULL,
+    "Email" VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE "Seat" (
+    "Id" UUID PRIMARY KEY,
+    "Row" CHAR(1) NOT NULL,
+    "SeatNumber" INTEGER NOT NULL,
+    "HallId" UUID NOT NULL,
+    "ISTaken" BOOLEAN NOT NULL
+);
+
+CREATE TABLE "Play" (
+    "Id" UUID PRIMARY KEY,
+    "Name" VARCHAR(255) NOT NULL,
+    "TheatreId" UUID NOT NULL
+);
+
+CREATE TABLE "Theatre" (
+    "Id" UUID PRIMARY KEY,
+    "CityId" UUID NOT NULL,
+    "Name" VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE "SubscriptionCard" (
+    "Id" UUID PRIMARY KEY,
+    "DurationInMonths" INTEGER NOT NULL
+);
+
+CREATE TABLE "Ticket" (
+    "Id" UUID PRIMARY KEY,
+    "BuyerId" UUID NOT NULL,
+    "SeatId" UUID NOT NULL,
+    "PlayId" UUID NOT NULL,
+    "Price" NUMERIC(4, 2) NOT NULL,
+    "BoughtAt" TIMESTAMP NOT NULL
+);
+
+CREATE TABLE "Showtime" (
+    "Id" UUID PRIMARY KEY,
+    "PlayId" UUID NOT NULL,
+    "StartingTimeAndDate" TIMESTAMP NOT NULL,
+    "EndTimeAndDate" TIMESTAMP NOT NULL
+);
+
+CREATE TABLE "PlayHall" (
+    "Id" UUID PRIMARY KEY,
+    "PlayId" UUID NOT NULL,
+    "HallId" UUID NOT NULL
+);
+
+CREATE TABLE "Hall" (
+    "Id" UUID PRIMARY KEY,
+    "Number" INTEGER NOT NULL,
+    "TheatreId" UUID NOT NULL
+);
+
+CREATE TABLE "City" (
+    "Id" UUID PRIMARY KEY,
+    "Name" VARCHAR(255) NOT NULL,
+    "PostalCode" INTEGER
+);
+
+CREATE TABLE "Actor" (
+    "Id" UUID PRIMARY KEY,
+    "Name" VARCHAR(255) NOT NULL,
+    "DOB" TIMESTAMP NOT NULL
+);
+
+CREATE TABLE "ActorPlay" (
+    "Id" UUID PRIMARY KEY,
+    "ActorId" UUID NOT NULL,
+    "PlayId" UUID NOT NULL
+);
+
+-- Foreign key for Seat referencing Hall
+ALTER TABLE "Seat" 
+ADD CONSTRAINT "FK_Seat_Hall_HallId" FOREIGN KEY ("HallId") REFERENCES "Hall" ("Id");
+
+-- Foreign key for Play referencing Theatre
+ALTER TABLE "Play"
+ADD CONSTRAINT "FK_Play_Theatre_TheatreId" FOREIGN KEY ("TheatreId") REFERENCES "Theatre" ("Id");
+
+-- Foreign key for Theatre referencing City
+ALTER TABLE "Theatre"
+ADD CONSTRAINT "FK_Theatre_City_CityId" FOREIGN KEY ("CityId") REFERENCES "City" ("Id");
+
+-- Foreign key for Ticket referencing Buyer, Seat, Play
+ALTER TABLE "Ticket"
+ADD CONSTRAINT "FK_Ticket_Buyer_BuyerId" FOREIGN KEY ("BuyerId") REFERENCES "Buyer" ("Id");
+
+ALTER TABLE "Ticket"
+ADD CONSTRAINT "FK_Ticket_Seat_SeatId" FOREIGN KEY ("SeatId") REFERENCES "Seat" ("Id");
+
+ALTER TABLE "Ticket"
+ADD CONSTRAINT "FK_Ticket_Play_PlayId" FOREIGN KEY ("PlayId") REFERENCES "Play" ("Id");
+
+-- Foreign key for Showtime referencing Play
+ALTER TABLE "Showtime"
+ADD CONSTRAINT "FK_Showtime_Play_PlayId" FOREIGN KEY ("PlayId") REFERENCES "Play" ("Id");
+
+-- Foreign key for PlayHall referencing Play and Hall
+ALTER TABLE "PlayHall"
+ADD CONSTRAINT "FK_PlayHall_Play_PlayId" FOREIGN KEY ("PlayId") REFERENCES "Play" ("Id");
+
+ALTER TABLE "PlayHall"
+ADD CONSTRAINT "FK_PlayHall_Hall_HallId" FOREIGN KEY ("HallId") REFERENCES "Hall" ("Id");
+
+-- Foreign key for Hall referencing Theatre
+ALTER TABLE "Hall"
+ADD CONSTRAINT "FK_Hall_Theatre_TheatreId" FOREIGN KEY ("TheatreId") REFERENCES "Theatre" ("Id");
+
+-- Foreign key for ActorPlay referencing Actor and Play
+ALTER TABLE "ActorPlay"
+ADD CONSTRAINT "FK_ActorPlay_Actor_ActorId" FOREIGN KEY ("ActorId") REFERENCES "Actor" ("Id");
+
+ALTER TABLE "ActorPlay"
+ADD CONSTRAINT "FK_ActorPlay_Play_PlayId" FOREIGN KEY ("PlayId") REFERENCES "Play" ("Id");
+
+--Ovako mi je brže :) 
+ALTER TABLE "SubscriptionCard"
+ADD COLUMN "BuyerId" UUID UNIQUE,
+ADD CONSTRAINT "FK_SubscriptionCard_BuyerId" FOREIGN KEY ("BuyerId") REFERENCES "Buyer" ("Id");
+
+
+--Inserting data into tables
+INSERT INTO "City" ("Id", "Name", "PostalCode")
+VALUES (gen_random_uuid(), 'New York', 10001);
+
+INSERT INTO "Theatre" ("Id", "CityId", "Name")
+VALUES (gen_random_uuid(), 
+        (SELECT "Id" FROM "City" WHERE "Name" = 'New York'), 
+        'Grand Theatre');
+
+INSERT INTO "Buyer" ("Id", "Name", "DOB", "Email")
+VALUES (gen_random_uuid(), 'Petar Bajus', '2004-06-11', 'bajus.petar@gmail.com'),
+       (gen_random_uuid(), 'Jane Smith', '1990-05-20', 'jane.smith@example.com');
+
+INSERT INTO "Hall" ("Id", "Number", "TheatreId")
+VALUES (gen_random_uuid(), 1, (SELECT "Id" FROM "Theatre" WHERE "Name" = 'Grand Theatre')),
+       (gen_random_uuid(), 2, (SELECT "Id" FROM "Theatre" WHERE "Name" = 'Grand Theatre'));
+
+INSERT INTO "Play" ("Id", "Name", "TheatreId")
+VALUES 
+    (gen_random_uuid(), 'Hamlet', (SELECT "Id" FROM "Theatre" WHERE "Name" = 'Grand Theatre')),
+    (gen_random_uuid(), 'Othello', (SELECT "Id" FROM "Theatre" WHERE "Name" = 'Grand Theatre'));
+	
+INSERT INTO "Seat" ("Id", "Row", "SeatNumber", "HallId", "ISTaken")
+VALUES 
+    (gen_random_uuid(), 'A', 1, (SELECT "Id" FROM "Hall" WHERE "Number" = 1), false),
+    (gen_random_uuid(), 'A', 1, (SELECT "Id" FROM "Hall" WHERE "Number" = 2), false);
+
+INSERT INTO "Showtime" ("Id", "PlayId", "StartingTimeAndDate", "EndTimeAndDate")
+VALUES 
+    (gen_random_uuid(), (SELECT "Id" FROM "Play" WHERE "Name" = 'Hamlet'), '2024-01-01 19:00:00', '2024-01-01 21:00:00'),
+    (gen_random_uuid(), (SELECT "Id" FROM "Play" WHERE "Name" = 'Othello'), '2024-01-02 19:00:00', '2024-01-02 21:00:00');
+
+-- Insert ticket for Petar Bajus, hall 1, row A, number 1, for Hamlet
+INSERT INTO "Ticket" ("Id", "BuyerId", "SeatId", "PlayId", "Price", "BoughtAt")
+VALUES (
+    gen_random_uuid(),
+    (SELECT "Id" FROM "Buyer" WHERE "Name" = 'Petar Bajus'),
+    (SELECT "Id" FROM "Seat" WHERE "HallId" = (SELECT "Id" FROM "Hall" WHERE "Number" = 1) AND "Row" = 'A' AND "SeatNumber" = 1),
+    (SELECT "Id" FROM "Play" WHERE "Name" = 'Hamlet'),
+    50.00,
+    '2023-12-25 00:00:00'
+);
+
+-- Insert ticket for Jane Smith, hall 2, row A, number 1, for Othello
+INSERT INTO "Ticket" ("Id", "BuyerId", "SeatId", "PlayId", "Price", "BoughtAt")
+VALUES (
+    gen_random_uuid(),
+    (SELECT "Id" FROM "Buyer" WHERE "Name" = 'Jane Smith'),
+    (SELECT "Id" FROM "Seat" WHERE "HallId" = (SELECT "Id" FROM "Hall" WHERE "Number" = 2) AND "Row" = 'A' AND "SeatNumber" = 1),
+    (SELECT "Id" FROM "Play" WHERE "Name" = 'Othello'),
+    50.00,
+    '2023-12-25 00:00:00'
+);
+
+INSERT INTO "Actor" ("Id", "Name", "DOB")
+VALUES 
+    (gen_random_uuid(), 'John Doe', '1980-06-15'),
+    (gen_random_uuid(), 'Jane Austen', '1975-11-22'),
+    (gen_random_uuid(), 'Robert Brown', '1990-03-12');
+
+
+INSERT INTO "ActorPlay" ("Id", "ActorId", "PlayId")
+VALUES 
+    (gen_random_uuid(), (SELECT "Id" FROM "Actor" WHERE "Name" = 'John Doe'), (SELECT "Id" FROM "Play" WHERE "Name" = 'Hamlet')),
+    (gen_random_uuid(), (SELECT "Id" FROM "Actor" WHERE "Name" = 'Jane Austen'), (SELECT "Id" FROM "Play" WHERE "Name" = 'Othello'));
+
+
+INSERT INTO "SubscriptionCard" ("Id", "DurationInMonths", "BuyerId")
+VALUES (
+    gen_random_uuid(), 
+    9,                 
+    (SELECT "Id" FROM "Buyer" WHERE "Name" = 'Petar Bajus')
+);
+
+INSERT INTO "PlayHall" ("Id", "PlayId", "HallId")
+VALUES 
+    (gen_random_uuid(), 
+        (SELECT "Id" FROM "Play" WHERE "Name" = 'Hamlet'), 
+        (SELECT "Id" FROM "Hall" WHERE "Number" = 1)
+    ),
+    (gen_random_uuid(), 
+        (SELECT "Id" FROM "Play" WHERE "Name" = 'Othello'), 
+        (SELECT "Id" FROM "Hall" WHERE "Number" = 2)
+    );
+
+--Performing CRUD operations (Create operations already done)
+
+-------------Read
+
+--List all buyers
+SELECT * FROM "Buyer";
+
+--Shows the starting time and date of plays
+SELECT "Play"."Name", "Showtime"."StartingTimeAndDate"
+FROM "Play"
+JOIN "Showtime" ON "Play"."Id" = "Showtime"."PlayId";
+
+--List all actors born after 1980
+SELECT *
+FROM "Actor"
+WHERE "DOB" > '1980-01-01';
+
+--Inner join buyers and tickets
+SELECT "Buyer".*, "Ticket".*
+FROM "Buyer"
+INNER JOIN "Ticket" ON "Buyer"."Id" = "Ticket"."BuyerId";
+
+--Left join buyers and subscriptions, showing the buyers who don't have a subscription
+SELECT "Buyer"."Name", "Buyer"."Email", "SubscriptionCard"."DurationInMonths"
+FROM "Buyer"
+LEFT JOIN "SubscriptionCard" ON "Buyer"."Id" = "SubscriptionCard"."BuyerId"
+WHERE "SubscriptionCard"."BuyerId" IS NULL;
+
+--Full outer join, showing all showtimes and plays. A play not having a showtime will be represented by null value.
+SELECT "Play"."Name", "Showtime"."StartingTimeAndDate", "Showtime"."EndTimeAndDate"
+FROM "Play"
+FULL OUTER JOIN "Showtime" ON "Play"."Id" = "Showtime"."PlayId";
+
+-------------Update
+
+UPDATE "Buyer"
+SET "Name" = 'Пётр Баюс'
+WHERE "Name" = 'Petar Bajus';
+
+SELECT * FROM "Buyer";
+
+-------------deletion (adding on delete cascade so all references to the particular object get deleted aswell)
+ALTER TABLE "Ticket"
+DROP CONSTRAINT "FK_Ticket_Buyer_BuyerId",
+ADD CONSTRAINT "FK_Ticket_Buyer_BuyerId" FOREIGN KEY ("BuyerId") REFERENCES "Buyer" ("Id") ON DELETE CASCADE;
+
+
+ALTER TABLE "SubscriptionCard" 
+DROP CONSTRAINT "FK_SubscriptionCard_BuyerId";
+
+ALTER TABLE "SubscriptionCard" 
+ADD CONSTRAINT "FK_SubscriptionCard_BuyerId" 
+FOREIGN KEY ("BuyerId") REFERENCES "Buyer" ("Id") 
+ON DELETE CASCADE;
+
+DELETE FROM "Buyer"
+WHERE "Name" = 'Пётр Баюс';
+
+SELECT * FROM "Buyer";
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
