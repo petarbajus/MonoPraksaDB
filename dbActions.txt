@@ -270,7 +270,8 @@ ON DELETE CASCADE;
 DELETE FROM "Buyer"
 WHERE "Name" = 'Пётр Баюс';
 
-SELECT * FROM "Buyer";
+
+
 
 
 
